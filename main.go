@@ -193,6 +193,8 @@ var local = flag.String("local", "", "serve as webserver, example: 0.0.0.0:8000"
 func Handler(w http.ResponseWriter, r *http.Request) {
 	header := w.Header()
 	header.Set("Content-Type", "application/json; charset=utf-8")
+	header.Set("Cache-Control", "max-age=300, public")
+	header.Set("Pragma", "public")
 
 	params := r.URL.Query()
 	source := params.Get("type")
