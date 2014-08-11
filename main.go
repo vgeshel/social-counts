@@ -180,8 +180,10 @@ func GetVK(pageUrl string) (int64, error) {
 		return strconv.ParseInt(countAsStr, 10, 64)
 	} else {
 		log.Printf("warning: pattern %s not found in VK response for %s", vk_pat, reqUrl)
-		return 0, nil
+		return 0, errors.New("bad response")
 	}
+
+	return 0, errors.New("unreachable")
 }
 
 func main() {
