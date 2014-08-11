@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/cgi"
+	"net/http/fcgi"
 	"encoding/json"
 	"io/ioutil"
 	"regexp"
@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"log"
 	"math"
+	"flag"
 )
 
 type Counts struct {
@@ -186,55 +187,70 @@ func GetVK(pageUrl string) (int64, error) {
 	return 0, errors.New("unreachable")
 }
 
-func main() {
+var local = flag.String("local", "", "serve as webserver, example: 0.0.0.0:8000")
+
+
+func Handler(w http.ResponseWriter, r *http.Request) {
+	header := w.Header()
+	header.Set("Content-Type", "application/json; charset=utf-8")
+
+	params := r.URL.Query()
+	source := params.Get("type")
+	pageUrl := params.Get("url")
+
+	log.Printf("url %s type %s", pageUrl, source)
 	
-	if err := cgi.Serve(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		header := w.Header()
-		header.Set("Content-Type", "application/json; charset=utf-8")
+	counts := Counts{
+		Url: pageUrl,
+		Count: 0,
+	}
 
-		params := r.URL.Query()
-		source := params.Get("type")
-		pageUrl := params.Get("url")
+	var count int64 = 0
+	var err error = nil
+	
+	switch source {
+	case "googlePlus":
+		count, err = GetGPlus(pageUrl)
+	case "stumbleupon":
+		count, err = GetStumbleUpon(pageUrl)
+	case "pinterest":
+		count, err = GetPinterest(pageUrl)
+	case "vkontakte":
+		count, err = GetVK(pageUrl)
+	}
 
-		log.Printf("url %s type %s", pageUrl, source)
-		
-		counts := Counts{
-			Url: pageUrl,
-			Count: 0,
-		}
+	if err != nil {
+		fmt.Fprintf(w, "ERROR %+v", err)
+		w.WriteHeader(500)
+	} else {
+		counts.Count = count
+	}
+	
+	bytes, err := json.Marshal(counts)
 
-		var count int64 = 0
-		var err error = nil
-		
-		switch source {
-		case "googlePlus":
-			count, err = GetGPlus(pageUrl)
-		case "stumbleupon":
-			count, err = GetStumbleUpon(pageUrl)
-		case "pinterest":
-			count, err = GetPinterest(pageUrl)
-		case "vkontakte":
-			count, err = GetVK(pageUrl)
-		}
+	log.Printf("output: %s", bytes)
 
-		if err != nil {
-			fmt.Fprintf(w, "ERROR %+v", err)
-			w.WriteHeader(500)
-		} else {
-			counts.Count = count
-		}
-		
-		bytes, err := json.Marshal(counts)
+	if err != nil {
+		fmt.Fprintf(w, "ERROR %+v", err)
+		w.WriteHeader(500)
+	} else {
+		w.Write(bytes)
+	}
+}
 
-		log.Printf("output: %s", bytes)
+func main() {
+	flag.Parse()
 
-		if err != nil {
-			fmt.Fprintf(w, "ERROR %+v", err)
-			w.WriteHeader(500)
-		} else {
-			w.Write(bytes)
-		}
-	})); err != nil {
+	handler := http.HandlerFunc(Handler)
+	var err error
+	
+	if *local != "" { // Run as a local web server
+        err = http.ListenAndServe(*local, handler)
+    } else { // Run as FCGI via standard I/O
+        err = fcgi.Serve(nil, handler)
+    }
+	
+	if err != nil {
 		fmt.Println(err)
 	}
 }
