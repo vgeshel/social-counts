@@ -200,7 +200,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	source := params.Get("type")
 	pageUrl := params.Get("url")
 
-	log.Printf("url %s type %s", pageUrl, source)
+	//log.Printf("url %s type %s", pageUrl, source)
 	
 	counts := Counts{
 		Url: pageUrl,
@@ -230,7 +230,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	
 	bytes, err := json.Marshal(counts)
 
-	log.Printf("output: %s", bytes)
+	//log.Printf("output: %s", bytes)
 
 	if err != nil {
 		fmt.Fprintf(w, "ERROR %+v", err)
